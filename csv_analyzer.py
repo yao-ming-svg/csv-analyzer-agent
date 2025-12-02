@@ -290,6 +290,68 @@ class CSVAnalyzer:
 
         return "\n".join(output)
 
+    def format_as_json(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Format the analysis results as structured JSON.
+
+        Args:
+            analysis: Dictionary returned from analyze_file().
+
+        Returns:
+            Structured dictionary ready for JSON serialization.
+        """
+        file_summary = analysis["file_summary"]
+        stat_summary = analysis["statistical_summary"]
+
+        json_output = {
+            "file_summary": {
+                "file_name": file_summary["file_name"],
+                "file_path": file_summary["file_path"],
+                "number_of_rows": file_summary["number_of_rows"],
+                "number_of_columns": file_summary["number_of_columns"],
+                "memory_usage_bytes": file_summary["memory_usage_bytes"],
+                "columns": [
+                    {
+                        "name": col_name,
+                        "data_type": dtype
+                    }
+                    for col_name, dtype in file_summary["data_types"].items()
+                ]
+            },
+            "statistical_summary": {
+                "numerical_columns": stat_summary.get("numerical_columns", []),
+                "statistics": {}
+            }
+        }
+
+        # Add numerical column statistics
+        stats = stat_summary.get("statistics", {})
+        numerical_cols = stat_summary.get("numerical_columns", [])
+        
+        for col in numerical_cols:
+            if col in stats:
+                col_stats = stats[col]
+                json_output["statistical_summary"]["statistics"][col] = {
+                    "mean": col_stats.get("mean"),
+                    "median": col_stats.get("median"),
+                    "std": col_stats.get("std"),
+                    "min": col_stats.get("min"),
+                    "max": col_stats.get("max"),
+                    "count": col_stats.get("count"),
+                    "null_count": col_stats.get("null_count"),
+                    "null_percentage": col_stats.get("null_percentage")
+                }
+
+        # Add correlations
+        if "correlations" in stats and stats["correlations"]:
+            json_output["statistical_summary"]["correlations"] = stats["correlations"]
+
+        # Add non-numerical columns
+        if "non_numerical_columns" in stats:
+            json_output["statistical_summary"]["non_numerical_columns"] = stats["non_numerical_columns"]
+
+        return json_output
+
 
 if __name__ == "__main__":
     # Simple test/demo

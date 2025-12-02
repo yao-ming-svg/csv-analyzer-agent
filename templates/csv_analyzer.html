@@ -6,6 +6,7 @@
     <title>CSV Analyzer - AI-Powered Data Analysis</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -319,11 +320,61 @@
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
-            white-space: pre-wrap;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            overflow-x: auto;
+        }
+
+        .summary-section h4 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .json-section {
+            color: #2d3748;
+        }
+
+        .json-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .json-item:last-child {
+            border-bottom: none;
+        }
+
+        .json-subsection {
+            margin: 15px 0;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .json-subsection strong {
+            color: #4a5568;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .json-list {
+            list-style: none;
+            margin: 8px 0 0 0;
+            padding-left: 0;
+        }
+
+        .json-list li {
+            padding: 4px 0;
+            padding-left: 20px;
+            position: relative;
+            color: #2d3748;
+        }
+
+        .json-list li:before {
+            content: "•";
+            color: #667eea;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
         }
 
         .insights-section {
@@ -359,6 +410,62 @@
             color: #4a5568;
             line-height: 1.6;
             white-space: pre-wrap;
+        }
+
+        .insight-item .markdown-content {
+            color: #4a5568;
+            line-height: 1.8;
+        }
+
+        .insight-item .markdown-content h1,
+        .insight-item .markdown-content h2,
+        .insight-item .markdown-content h3,
+        .insight-item .markdown-content h4 {
+            color: #2d3748;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .insight-item .markdown-content h1 {
+            font-size: 1.5rem;
+        }
+
+        .insight-item .markdown-content h2 {
+            font-size: 1.3rem;
+        }
+
+        .insight-item .markdown-content h3 {
+            font-size: 1.1rem;
+        }
+
+        .insight-item .markdown-content h4 {
+            font-size: 1rem;
+        }
+
+        .insight-item .markdown-content p {
+            margin-bottom: 12px;
+            color: #4a5568;
+        }
+
+        .insight-item .markdown-content ul,
+        .insight-item .markdown-content ol {
+            margin: 12px 0;
+            padding-left: 30px;
+        }
+
+        .insight-item .markdown-content li {
+            margin-bottom: 8px;
+            color: #4a5568;
+        }
+
+        .insight-item .markdown-content strong {
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .insight-item .markdown-content em {
+            font-style: italic;
         }
 
         @media (max-width: 768px) {
@@ -534,6 +641,189 @@
                 error.style.display = 'block';
             }
 
+            function parseMarkdown(text) {
+                if (!text) return '';
+                
+                // Use marked.js if available (preferred method)
+                if (typeof marked !== 'undefined') {
+                    try {
+                        // Configure marked.js options
+                        marked.setOptions({
+                            breaks: true,
+                            gfm: true
+                        });
+                        return marked.parse(text);
+                    } catch (e) {
+                        console.warn('Marked.js parsing failed, using fallback:', e);
+                    }
+                }
+                
+                // Fallback: enhanced markdown parsing
+                // Escape HTML to prevent XSS
+                function escapeHtml(text) {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+                
+                // Split into lines for processing
+                const lines = text.split('\n');
+                const processedLines = [];
+                let inList = false;
+                let listItems = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    let line = lines[i].trim();
+                    
+                    if (!line) {
+                        // Close any open list
+                        if (inList && listItems.length > 0) {
+                            processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            listItems = [];
+                            inList = false;
+                        }
+                        processedLines.push('');
+                        continue;
+                    }
+                    
+                    // Headers (must be at start of line)
+                    if (line.match(/^###+\s/)) {
+                        if (inList) {
+                            processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            listItems = [];
+                            inList = false;
+                        }
+                        const headerText = line.replace(/^###+\s/, '');
+                        processedLines.push(`<h3>${escapeHtml(headerText)}</h3>`);
+                        continue;
+                    }
+                    
+                    if (line.match(/^##\s/)) {
+                        if (inList) {
+                            processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            listItems = [];
+                            inList = false;
+                        }
+                        const headerText = line.replace(/^##\s/, '');
+                        processedLines.push(`<h2>${escapeHtml(headerText)}</h2>`);
+                        continue;
+                    }
+                    
+                    if (line.match(/^#\s/)) {
+                        if (inList) {
+                            processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            listItems = [];
+                            inList = false;
+                        }
+                        const headerText = line.replace(/^#\s/, '');
+                        processedLines.push(`<h1>${escapeHtml(headerText)}</h1>`);
+                        continue;
+                    }
+                    
+                    // List items (unordered)
+                    if (line.match(/^[-*]\s/)) {
+                        if (!inList) {
+                            inList = true;
+                        }
+                        let itemText = line.replace(/^[-*]\s/, '');
+                        // Process bold and italic within list items
+                        itemText = itemText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        itemText = itemText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                        listItems.push(`<li>${escapeHtml(itemText)}</li>`);
+                        continue;
+                    }
+                    
+                    // Close list if we hit a non-list item
+                    if (inList && listItems.length > 0) {
+                        processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                        listItems = [];
+                        inList = false;
+                    }
+                    
+                    // Process bold and italic
+                    line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                    
+                    // Regular paragraph
+                    processedLines.push(`<p>${line}</p>`);
+                }
+                
+                // Close any remaining list
+                if (inList && listItems.length > 0) {
+                    processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                }
+                
+                return processedLines.join('\n');
+            }
+
+            function formatFileSummary(fileSummary) {
+                if (!fileSummary) return '<p>No file summary available</p>';
+                
+                let html = '<div class="json-section">';
+                html += `<div class="json-item"><strong>File Name:</strong> ${fileSummary.file_name || 'N/A'}</div>`;
+                html += `<div class="json-item"><strong>File Path:</strong> ${fileSummary.file_path || 'N/A'}</div>`;
+                html += `<div class="json-item"><strong>Number of Rows:</strong> ${(fileSummary.number_of_rows || 0).toLocaleString()}</div>`;
+                html += `<div class="json-item"><strong>Number of Columns:</strong> ${fileSummary.number_of_columns || 0}</div>`;
+                html += `<div class="json-item"><strong>Memory Usage:</strong> ${(fileSummary.memory_usage_bytes || 0).toLocaleString()} bytes</div>`;
+                
+                // Removed columns section (variable types display)
+                
+                html += '</div>';
+                return html;
+            }
+
+            function formatStatisticalSummary(statSummary) {
+                if (!statSummary) return '<p>No statistical summary available</p>';
+                
+                let html = '<div class="json-section">';
+                
+                // Numerical columns
+                const numericalCols = statSummary.numerical_columns || [];
+                if (numericalCols.length > 0) {
+                    html += `<div class="json-subsection"><strong>Numerical Columns:</strong> ${numericalCols.join(', ')}</div>`;
+                    
+                    const stats = statSummary.statistics || {};
+                    numericalCols.forEach(col => {
+                        if (stats[col]) {
+                            html += `<div class="json-subsection"><strong>${col}:</strong><ul class="json-list">`;
+                            const colStats = stats[col];
+                            if (colStats.mean !== null && colStats.mean !== undefined) {
+                                html += `<li><strong>Mean:</strong> ${Number(colStats.mean).toFixed(4)}</li>`;
+                                html += `<li><strong>Median:</strong> ${Number(colStats.median).toFixed(4)}</li>`;
+                                html += `<li><strong>Std Dev:</strong> ${Number(colStats.std).toFixed(4)}</li>`;
+                                html += `<li><strong>Min:</strong> ${Number(colStats.min).toFixed(4)}</li>`;
+                                html += `<li><strong>Max:</strong> ${Number(colStats.max).toFixed(4)}</li>`;
+                            }
+                            html += `<li><strong>Count (non-null):</strong> ${(colStats.count || 0).toLocaleString()}</li>`;
+                            html += `<li><strong>Null Count:</strong> ${(colStats.null_count || 0).toLocaleString()} (${Number(colStats.null_percentage || 0).toFixed(2)}%)</li>`;
+                            html += '</ul></div>';
+                        }
+                    });
+                } else {
+                    html += '<div class="json-subsection">No numerical columns found in this dataset.</div>';
+                }
+                
+                // Removed correlations section
+                
+                // Non-numerical columns
+                if (statSummary.non_numerical_columns && Object.keys(statSummary.non_numerical_columns).length > 0) {
+                    html += '<div class="json-subsection"><strong>Non-Numerical Columns:</strong>';
+                    for (const [col, info] of Object.entries(statSummary.non_numerical_columns)) {
+                        html += `<div class="json-item"><strong>${col}:</strong><ul class="json-list">`;
+                        html += `<li>Unique Values: ${(info.unique_count || 0).toLocaleString()}</li>`;
+                        html += `<li>Null Count: ${(info.null_count || 0).toLocaleString()} (${Number(info.null_percentage || 0).toFixed(2)}%)</li>`;
+                        if (info.most_frequent && info.most_frequent.length > 0) {
+                            html += `<li>Most Frequent: ${info.most_frequent.slice(0, 5).join(', ')}</li>`;
+                        }
+                        html += '</ul></div>';
+                    }
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+                return html;
+            }
+
             function displayResults(resultsArray) {
                 let html = '';
                 
@@ -549,43 +839,56 @@
                         html += `
                             <div class="analysis-result">
                                 <h3><i class="fas fa-file-csv"></i> ${result.filename}</h3>
+                        `;
+
+                        // Show AI High-Level Summary first if available
+                        if (result.ai_insights && result.ai_insights.high_level_summary) {
+                            html += `
+                                <div class="insights-section" style="margin-bottom: 20px;">
+                                    <h4><i class="fas fa-robot"></i> AI High-Level Summary</h4>
+                                    <div class="insight-item">
+                                        <div class="markdown-content">${parseMarkdown(result.ai_insights.high_level_summary)}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                                
+                        html += `
+                                <div class="summary-section">
+                                    <h4>📊 File Summary</h4>
+                                    ${formatFileSummary(result.formatted_summary?.file_summary || result.file_summary)}
+                                </div>
                                 
                                 <div class="summary-section">
-                                    <h4>📊 Statistical Summary</h4>
-                                    ${result.formatted_summary || 'No summary available'}
+                                    <h4>📈 Statistical Summary</h4>
+                                    ${formatStatisticalSummary(result.formatted_summary?.statistical_summary || result.statistical_summary)}
                                 </div>
                         `;
 
-                        if (result.ai_insights) {
+                        // Show remaining AI insights (Key Trends, Anomalies, Beginner Explanation)
+                        if (result.ai_insights && (result.ai_insights.key_trends || result.ai_insights.anomalies || result.ai_insights.beginner_explanation)) {
                             html += `
                                 <div class="insights-section">
-                                    <h4><i class="fas fa-robot"></i> AI-Generated Insights</h4>
-                                    
-                                    ${result.ai_insights.high_level_summary ? `
-                                        <div class="insight-item">
-                                            <h5>📊 High-Level Summary</h5>
-                                            <p>${result.ai_insights.high_level_summary}</p>
-                                        </div>
-                                    ` : ''}
+                                    <h4><i class="fas fa-robot"></i> Additional AI Insights</h4>
                                     
                                     ${result.ai_insights.key_trends ? `
                                         <div class="insight-item">
                                             <h5>📈 Key Trends</h5>
-                                            <p>${result.ai_insights.key_trends}</p>
+                                            <div class="markdown-content">${parseMarkdown(result.ai_insights.key_trends)}</div>
                                         </div>
                                     ` : ''}
                                     
                                     ${result.ai_insights.anomalies ? `
                                         <div class="insight-item">
                                             <h5>⚠️ Anomalies or Data Issues</h5>
-                                            <p>${result.ai_insights.anomalies}</p>
+                                            <div class="markdown-content">${parseMarkdown(result.ai_insights.anomalies)}</div>
                                         </div>
                                     ` : ''}
                                     
                                     ${result.ai_insights.beginner_explanation ? `
                                         <div class="insight-item">
                                             <h5>💡 Explanation for Beginners</h5>
-                                            <p>${result.ai_insights.beginner_explanation}</p>
+                                            <div class="markdown-content">${parseMarkdown(result.ai_insights.beginner_explanation)}</div>
                                         </div>
                                     ` : ''}
                                 </div>

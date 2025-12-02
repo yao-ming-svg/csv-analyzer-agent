@@ -8,6 +8,9 @@ with both statistical analysis and AI-powered insights.
 import os
 import sys
 import io
+import json
+import numpy as np
+import pandas as pd
 from flask import Flask, request, jsonify, render_template
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -22,6 +25,52 @@ if sys.platform == "win32":
 # Import our CSV analyzer modules
 from csv_analyzer import CSVAnalyzer
 from csv_llm_analyzer import CSVLLMAnalyzer
+
+
+def convert_to_native_types(obj):
+    """
+    Recursively convert numpy/pandas types to native Python types for JSON serialization.
+    
+    Args:
+        obj: Object that may contain numpy/pandas types
+        
+    Returns:
+        Object with all numpy/pandas types converted to native Python types
+    """
+    # Handle pandas/numpy NaN values first
+    try:
+        if pd.isna(obj):
+            return None
+    except (TypeError, ValueError):
+        pass
+    
+    # Handle numpy integer types
+    if isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
+        return int(obj)
+    # Handle numpy float types
+    elif isinstance(obj, (np.floating, np.float64, np.float32, np.float16)):
+        return float(obj)
+    # Handle numpy boolean types
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    # Handle numpy arrays
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    # Handle pandas Series
+    elif isinstance(obj, pd.Series):
+        return obj.tolist()
+    # Handle dictionaries
+    elif isinstance(obj, dict):
+        return {key: convert_to_native_types(value) for key, value in obj.items()}
+    # Handle lists and tuples
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_native_types(item) for item in obj]
+    # Handle strings (pandas sometimes returns object types)
+    elif isinstance(obj, str):
+        return str(obj)
+    # Default: return as-is (should be a native Python type)
+    else:
+        return obj
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
@@ -102,17 +151,22 @@ def analyze_csv():
                         'error': error
                     })
                 else:
+                    # Convert numpy/pandas types to native Python types for JSON serialization
+                    file_summary = convert_to_native_types(analysis['file_summary'])
+                    statistical_summary = convert_to_native_types(analysis['statistical_summary'])
+                    
+                    # Format as structured JSON
+                    analyzer = CSVAnalyzer()
+                    json_summary = analyzer.format_as_json(analysis)
+                    json_summary = convert_to_native_types(json_summary)
+                    
                     result = {
                         'filename': file.filename,
-                        'file_summary': analysis['file_summary'],
-                        'statistical_summary': analysis['statistical_summary'],
-                        'formatted_summary': None,
+                        'file_summary': file_summary,
+                        'statistical_summary': statistical_summary,
+                        'formatted_summary': json_summary,  # Now returns structured JSON
                         'ai_insights': None
                     }
-                    
-                    # Format the summary
-                    analyzer = CSVAnalyzer()
-                    result['formatted_summary'] = analyzer.format_summary(analysis)
                     
                     # Generate AI insights if requested
                     if include_ai_insights:
