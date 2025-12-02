@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Analyzer - AI-Powered Data Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            z-index: 50;
+        }
+
+        .toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            padding: 18px 22px;
+            border-radius: 14px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            font-weight: 700;
+            color: #4a5568;
+            font-size: 1.2rem;
+        }
+
+        .toggle-btn i {
+            color: #667eea;
+            font-size: 1.35rem;
+        }
+
+        .first-visit-hint {
+            position: fixed;
+            bottom: 96px;
+            left: 16px;
+            background: #1a202c;
+            color: #fff;
+            padding: 16px 18px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            z-index: 60;
+            max-width: 280px;
+            font-size: 1.05rem;
+            line-height: 1.5rem;
+            animation: floatY 1.2s ease-in-out infinite alternate;
+        }
+
+        .first-visit-hint:after {
+            content: "";
+            position: absolute;
+            left: 18px;
+            bottom: -12px;
+            width: 0; height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid #1a202c;
+        }
+
+        @keyframes floatY { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+
+        .sidebar {
+            width: 420px;
+            max-width: 92vw;
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            padding: 24px;
+            border-top-right-radius: 16px;
+            border-bottom-right-radius: 16px;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            overflow-y: auto;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-105%);
+        }
+
+        .content {
+            flex: 1;
+            margin-left: 420px;
+            transition: margin-left 0.3s ease;
+            padding: 32px 20px 40px 20px;
+            width: 100%;
+        }
+
+        .content.expanded {
+            margin-left: 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .form-section {
+            background: transparent;
+            border-radius: 20px;
+            padding: 10px;
+        }
+
+        .form-section h2 {
+            color: #4a5568;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #2d3748;
+            font-size: 0.95rem;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .file-upload-label:hover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .file-upload-label i {
+            font-size: 1.5rem;
+            color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-group input[type=checkbox] {
+            width: auto;
+            margin: 0;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: calc(100vh - 120px);
+        }
+
+        .results-title {
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .results-section h2 {
+            color: #4a5568;
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .file-info {
+            background: #e6fffa;
+            color: #234e52;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .analysis-result {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .analysis-result h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .summary-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+
+        .insights-section {
+            background: #fef5e7;
+            border: 2px solid #f6ad55;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .insights-section h4 {
+            color: #c05621;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .insight-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .insight-item h5 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .insight-item p {
+            color: #4a5568;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        @media (max-width: 768px) {
+            .content { margin-left: 0; padding-top: 72px; }
+            .header h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <button id="openSidebar" class="toggle-btn" aria-label="Toggle sidebar" title="New Analysis">
+            <i class="fas fa-sliders-h"></i>
+        </button>
+    </div>
+    <div id="firstVisitHint" class="first-visit-hint" style="display:none;">
+        Upload a CSV file to get started with data analysis.
+    </div>
+    <div class="container">
+        <aside id="sidebar" class="sidebar hidden">
+            <div class="form-section">
+                <h2><i class="fas fa-file-csv"></i> CSV Analyzer</h2>
+                <form id="analyzeForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label>Upload CSV File(s)</label>
+                        <div class="file-upload">
+                            <input type="file" id="files" name="files" multiple accept=".csv">
+                            <label for="files" class="file-upload-label">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <div>
+                                    <div>Click to upload CSV files</div>
+                                    <small>CSV format only (Max 50MB each)</small>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="fileInfo" class="file-info" style="display: none;"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeAIInsights" name="include_ai_insights" value="true">
+                            <label for="includeAIInsights">Include AI-Powered Insights</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <i class="fas fa-chart-line"></i>
+                        Analyze CSV
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <main id="content" class="content expanded">
+            <div class="header">
+                <h1><i class="fas fa-database"></i> CSV Analyzer</h1>
+                <p>AI-Powered Data Analysis & Insights</p>
+            </div>
+
+            <div class="results-section">
+                <h2 class="results-title"><i class="fas fa-chart-bar"></i> Analysis Results</h2>
+                <div id="loading" class="loading" style="display: none;">
+                    <i class="fas fa-spinner"></i>
+                    <p>Analyzing your CSV file...</p>
+                </div>
+                <div id="error" class="error" style="display: none;"></div>
+                <div id="results"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('analyzeForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+            const fileInput = document.getElementById('files');
+            const fileInfo = document.getElementById('fileInfo');
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            const openSidebarBtn = document.getElementById('openSidebar');
+            const firstVisitHint = document.getElementById('firstVisitHint');
+
+            function hideSidebar() {
+                sidebar.classList.add('hidden');
+                content.classList.add('expanded');
+            }
+
+            function showSidebar() {
+                sidebar.classList.remove('hidden');
+                content.classList.remove('expanded');
+                if (firstVisitHint.style.display !== 'none') {
+                    firstVisitHint.style.display = 'none';
+                    try { localStorage.setItem('csv_first_visit_done', 'true'); } catch (e) {}
+                }
+            }
+
+            openSidebarBtn.addEventListener('click', function() {
+                if (sidebar.classList.contains('hidden')) {
+                    showSidebar();
+                } else {
+                    hideSidebar();
+                }
+            });
+
+            try {
+                const visited = localStorage.getItem('csv_first_visit_done') === 'true';
+                if (!visited) {
+                    firstVisitHint.style.display = 'block';
+                }
+            } catch (e) {
+                firstVisitHint.style.display = 'block';
+            }
+
+            fileInput.addEventListener('change', function() {
+                const files = this.files;
+                if (files.length > 0) {
+                    let fileNames = Array.from(files).map(file => file.name).join(', ');
+                    fileInfo.textContent = `Selected: ${fileNames}`;
+                    fileInfo.style.display = 'block';
+                } else {
+                    fileInfo.style.display = 'none';
+                }
+            });
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                loading.style.display = 'block';
+                error.style.display = 'none';
+                results.innerHTML = '';
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+
+                try {
+                    const formData = new FormData();
+                    formData.append('include_ai_insights', document.getElementById('includeAIInsights').checked);
+
+                    const files = fileInput.files;
+                    if (files.length === 0) {
+                        throw new Error('Please select at least one CSV file');
+                    }
+
+                    for (let i = 0; i < files.length; i++) {
+                        formData.append('files', files[i]);
+                    }
+
+                    const response = await fetch('/analyze-csv', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        displayResults(result.results);
+                        hideSidebar();
+                    } else {
+                        showError(result.error || 'An error occurred while analyzing the CSV file.');
+                    }
+                } catch (err) {
+                    showError('Network error. Please check if the server is running.');
+                } finally {
+                    loading.style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-chart-line"></i> Analyze CSV';
+                }
+            });
+
+            function showError(message) {
+                error.textContent = message;
+                error.style.display = 'block';
+            }
+
+            function displayResults(resultsArray) {
+                let html = '';
+                
+                resultsArray.forEach((result, index) => {
+                    if (result.error) {
+                        html += `
+                            <div class="analysis-result">
+                                <h3><i class="fas fa-exclamation-triangle"></i> ${result.filename}</h3>
+                                <div class="error">${result.error}</div>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="analysis-result">
+                                <h3><i class="fas fa-file-csv"></i> ${result.filename}</h3>
+                                
+                                <div class="summary-section">
+                                    <h4>📊 Statistical Summary</h4>
+                                    ${result.formatted_summary || 'No summary available'}
+                                </div>
+                        `;
+
+                        if (result.ai_insights) {
+                            html += `
+                                <div class="insights-section">
+                                    <h4><i class="fas fa-robot"></i> AI-Generated Insights</h4>
+                                    
+                                    ${result.ai_insights.high_level_summary ? `
+                                        <div class="insight-item">
+                                            <h5>📊 High-Level Summary</h5>
+                                            <p>${result.ai_insights.high_level_summary}</p>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${result.ai_insights.key_trends ? `
+                                        <div class="insight-item">
+                                            <h5>📈 Key Trends</h5>
+                                            <p>${result.ai_insights.key_trends}</p>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${result.ai_insights.anomalies ? `
+                                        <div class="insight-item">
+                                            <h5>⚠️ Anomalies or Data Issues</h5>
+                                            <p>${result.ai_insights.anomalies}</p>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${result.ai_insights.beginner_explanation ? `
+                                        <div class="insight-item">
+                                            <h5>💡 Explanation for Beginners</h5>
+                                            <p>${result.ai_insights.beginner_explanation}</p>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        } else if (result.ai_insights_error) {
+                            html += `
+                                <div class="error">
+                                    <strong>AI Insights Error:</strong> ${result.ai_insights_error}
+                                </div>
+                            `;
+                        }
+
+                        html += `</div>`;
+                    }
+                });
+
+                results.innerHTML = html;
+            }
+        });
+    </script>
+</body>
+</html>
+
